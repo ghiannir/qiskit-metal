@@ -6,61 +6,23 @@ from qiskit_metal.qlibrary.core import BaseQubit
 
 
 class FluxQubit4jj(BaseQubit):  # pylint: disable=invalid-name
-    """
-    The base `TransmonPocketCL` class
-
-    Inherits `TransmonPocket` class
-
-    Description:
-        Create a standard pocket transmon qubit for a ground plane,
-        with two pads connected by a junction (see drawing below).
-
-        Connector lines can be added using the `connection_pads`
-        dictionary. Each connector line has a name and a list of default
-        properties.
-
-        This is a child of TransmonPocket, see TransmonPocket for the variables and
-        description of that class.
-
-    ::
-
-        _________________
-        |               |
-        |_______________|       ^
-        ________x________       |  N
-        |               |       |
-        |_______________|
-
-
-    .. image::
-        Component_Qubit_Transmon_Pocket_CL.png
-
-
-    Charge Line:
-        * make_CL (bool): If a chargeline should be included.
-        * cl_gap (string): The cpw dielectric gap of the charge line.
-        * cl_width (string): The cpw width of the charge line.
-        * cl_length (string):  The length of the charge line 'arm' coupling the the qubit pocket.
-          Measured from the base of the 90 degree bend.
-        * cl_ground_gap (string):  How much ground is present between the charge line and the
-          qubit pocket.
-        * cl_pocket_edge (string): What side of the pocket the charge line is.
-          -180 to +180 from the 'west edge', will round to the nearest 90.
-        * cl_off_center (string):  Distance from the center axis the qubit pocket is referenced to
-    """
-    component_metadata = Dict(short_name='flux_qubit', _qgeometry_table_poly='True')
+    """Flux Qubit with 4 Josephson Junctions."""
+    component_metadata = Dict(short_name='Flux4jj',
+                              _qgeometry_table_path='True',
+                              _qgeometry_table_poly='True',
+                              _qgeometry_table_junction='True')
     """Component metadata"""
 
     default_options = Dict(
         alpha=0.5,
-        jj_side='250nm',
-        jj_spacing='1um',
-        constriction_width='20nm',
-        branches_spacing='3um',
-        inductor_width='2um',
-        cpw_length='10um',
-        cpw_width = '2.5um',
-        cpw_gap = '4um',
+        jj_side='0.25um',
+        jj_spacing='0.001mm',
+        constriction_width='0.02um',
+        branches_spacing='0.003mm',
+        inductor_width='0.002mm',
+        cpw_length='0.010mm',
+        cpw_width = '0.0025mm',
+        cpw_gap = '0.004mm',
         pos_x='0um',
         pos_y='0um',
         orientation=0,
@@ -295,12 +257,24 @@ class FluxQubit4jj(BaseQubit):  # pylint: disable=invalid-name
     def make_connections(self):
         p = self.parse_options()
 
-        cpw_path = draw.rectangle(
-            p.cpw_length,
-            p.cpw_width,
-            p.pos_x + 0.5*p.branches_spacing,
-            p.pos_y + 0.75*p.jj_spacing + 2*p.jj_side + p.cpw_width,
+        #cpw_path = draw.rectangle(
+        #    p.cpw_length,
+        #    p.cpw_width,
+        #    p.pos_x + 0.5*p.branches_spacing,
+        #    p.pos_y + 0.75*p.jj_spacing + 2*p.jj_side + p.cpw_width,
+        #)
+
+        cpw_path = draw.LineString(
+            [
+                (p.pos_x + 0.5*p.branches_spacing - p.cpw_length/2, p.pos_y + 0.75*p.jj_spacing + 2*p.jj_side + p.cpw_width/2),
+                (p.pos_x + 0.5*p.branches_spacing + p.cpw_length/2, p.pos_y + 0.75*p.jj_spacing + 2*p.jj_side + p.cpw_width/2)
+            ]
         )
+
+        cpy = draw.LineString([
+                (p.pos_x + 0.5*p.branches_spacing + p.cpw_length/2, p.pos_y + 0.75*p.jj_spacing + 2*p.jj_side + p.cpw_width/2),
+                (p.pos_x + 0.5*p.branches_spacing - p.cpw_length/2, p.pos_y + 0.75*p.jj_spacing + 2*p.jj_side + p.cpw_width/2),
+            ])
 
         cpw_path = draw.rotate(cpw_path, p.orientation, origin=(p.pos_x, p.pos_y))
         
@@ -310,21 +284,25 @@ class FluxQubit4jj(BaseQubit):  # pylint: disable=invalid-name
                            width=p.cpw_width + 2*p.cpw_gap,
                            subtract=True) 
         #print(cpw_path.exterior.coords)
-        points = np.array(cpw_path.exterior.coords)
+        points = np.array(cpw_path.coords)
         #print(points[1:3])
-        points_out = points[[0,3]]
+        #points_out = points[[0,3]]
         #print(points_out)
+        print(points)
 
-
-        self.add_pin('cpw_in',
-                     points=points[2:0:-1],
-                     width=p.cpw_width,
-                     input_as_norm=False)
-        
         self.add_pin('cpw_out',
-                     points=points_out,
+                     #points=points[2:0:-1],
+                     points=points[-2:],
                      width=p.cpw_width,
-                     input_as_norm=False)
+                     input_as_norm=True)
+        
+
+        points_out = np.array(cpy.coords)
+        
+        self.add_pin('cpw_in',
+                     points=points_out[-2:],
+                     width=p.cpw_width,
+                     input_as_norm=True)
 
 
 
